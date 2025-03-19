@@ -3,13 +3,13 @@ using UnityEngine;
 public class Camera : MonoBehaviour
 {
     public Transform target; // Object to focus on
-    public Vector3 fixedPosition = new Vector3(0, 10, -10); // Default position
+    public Vector3 fixedPosition = new Vector3(0, 3, -5); // Default position
     public Quaternion fixedRotation = Quaternion.Euler(30, 0, 0); // Default rotation
 
-    public Vector3 focusOffset = new Vector3(0, 2, -5); // Offset when focusing
+    public Vector3 focusOffset = new Vector3(0, 1, -3); // Offset when focusing
     public float rotationSpeed = 5f; // Mouse rotation speed
     public float zoomSpeed = 5f; // Zoom speed
-    public float minZoom = 2f, maxZoom = 10f; // Min & max zoom distance
+    public float minZoom = 1f, maxZoom = 10f; // Min & max zoom distance
     public float transitionSpeed = 5f; // Smooth transition speed
 
     private float currentZoom;
