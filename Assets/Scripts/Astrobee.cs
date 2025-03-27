@@ -44,10 +44,9 @@ public class Astrobee : MonoBehaviour
         rb.mass = Parameters.M;
         rb.inertiaTensor = Parameters.I_value;
         rb.inertiaTensorRotation = Parameters.I_rotation;
-        // Initialize positions (r) corresponding to each force application point
-        r = Parameters.r;
-        // Initialize force vectors
-        F = Parameters.F;
+        // Initialize positions (r) and force vectors (F)
+        r = (Vector3[])Parameters.r.Clone();
+        F = (Vector3[])Parameters.F.Clone();
         if (!ideal)
         {
             AddGaussianError(0.01f, 0.0001f, 0.001f, 0.005f, 0.01f, 0.01f);
@@ -92,7 +91,7 @@ public class Astrobee : MonoBehaviour
         }
         UpdateThrusterEffects();
         UpdateThrusterSound();
-        Debug.Log(string.Join(", ", motorAngle));
+
     }
 
     void ResetObject()

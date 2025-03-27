@@ -55,7 +55,7 @@ public static class Parameters
     public static float M = 9.12f;
     // Moment of inertia, unit in kg*m^2
     public static Vector3 I_value = new Vector3(1, 1, 1);
-    public static Quaternion I_rotation = new Quaternion(1, 0, 0, 0);
+    public static Quaternion I_rotation = Quaternion.identity;
 
     // Center of mass, unit in m
     public static Vector3 R = new Vector3(0, 0, 0);

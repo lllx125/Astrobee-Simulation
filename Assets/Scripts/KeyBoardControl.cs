@@ -39,6 +39,7 @@ public class KeyBoardControl : MonoBehaviour
     {
         // Look for the Astrobee component in this GameObject
         astrobee = GetComponent<Astrobee>();
+
         // Check if the component was found
         if (astrobee == null)
         {
