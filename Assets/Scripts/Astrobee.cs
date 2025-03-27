@@ -4,140 +4,106 @@ using System.Collections;
 
 public class Astrobee : MonoBehaviour
 {
-    // geometric parameters (m)
-    public float a = 0.1f;
-    public float b = 0.05f;
-    public float c = 0.15f;
-    public float d = 0.08f;
-    public float F0 = 1; // Force magnitude (N)
+    Rigidbody rb;
 
     public bool ideal = true;
-
-    private Vector3[] r; // Positions of force application
-    private Vector3[] F; // Force vectors
-
-    private Rigidbody rb;
-
     public GameObject thrusterEffectPrefab;
 
-    public AudioSource thruster;
-    public float thrusterVolume = 0.7f;
+    public AudioSource thrusterSound;
 
-    // Dictionary mapping key inputs to vent activations
-    private Dictionary<KeyCode, int[]> keyToControl = new Dictionary<KeyCode, int[]>
-    {
-        { KeyCode.A, new int[]{2, 9} },   // +x
-        { KeyCode.D, new int[]{4, 7} },   // -x
-        { KeyCode.W, new int[]{11, 12} }, // -y
-        { KeyCode.S, new int[]{5, 6} },   // +y
-        { KeyCode.Q, new int[]{3, 10} },  // +z
-        { KeyCode.E, new int[]{1, 8} },   // -z
-        { KeyCode.I, new int[]{3, 8} },   // +Rx1
-        { KeyCode.K, new int[]{1, 10} },  // -Rx1
-        { KeyCode.J, new int[]{2, 4} },   // +Ry1
-        { KeyCode.L, new int[]{1, 3} },   // -Ry1
-        { KeyCode.U, new int[]{4, 9} },   // +Rz1
-        { KeyCode.O, new int[]{2, 7} },    // -Rz1
-        { KeyCode.Alpha1, new int[]{1} },  // vent 1
-        { KeyCode.Alpha2, new int[]{2} },  // vent 2
-        { KeyCode.Alpha3, new int[]{3} },  // vent 3
-        { KeyCode.Alpha4, new int[]{4} },  // vent 4
-        { KeyCode.Alpha5, new int[]{5} },  // vent 5
-        { KeyCode.Alpha6, new int[]{6} },  // vent 6
-        { KeyCode.Alpha7, new int[]{7} },  // vent 7
-        { KeyCode.Alpha8, new int[]{8} },  // vent 8
-        { KeyCode.Alpha9, new int[]{9} },  // vent 9
-        { KeyCode.Alpha0, new int[]{10} }, // vent 10
-        { KeyCode.Minus, new int[]{11} },  // vent 11
-        { KeyCode.Equals, new int[]{12} }  // vent 12
-    };
+    GameObject[] thrusterEffect;
 
+    Vector3[] r; // Positions of force application
+    Vector3[] F; // Force vectors
+
+    // it avoid repeating opening of vents, the integer counts the number of vent that is opened
+    // 0 means closed vent, >0 means open vent
+    // the index range from 1~12
+    int[] openVents;
+
+
+    // the angle of the motor controlling the vent
+    // 0 is fully closed, 1 is fully opened
+    float[] motorAngle;
+    // the velocity of the motor controlling the vent
+    float[] motorVelocity;
     void Start()
     {
+        // Look for the Rigidbody component in this GameObject
         rb = GetComponent<Rigidbody>();
+        // Check if the component was found
+        if (rb == null)
+        {
+            Debug.LogError("Rigidbody component not found on this GameObject.");
+        }
+        ResetObject();
+        // initialize rigid body
+        rb = GetComponent<Rigidbody>();
+        // Set center of mass, mass, and moment of inertia from parameters
+        rb.centerOfMass = Parameters.R;
+        rb.mass = Parameters.M;
+        rb.inertiaTensor = Parameters.I_value;
+        rb.inertiaTensorRotation = Parameters.I_rotation;
         // Initialize positions (r) corresponding to each force application point
-        r = new Vector3[]
-        {
-            new Vector3(-d, a, c),  // 1
-            new Vector3(-c, a, d),  // 2
-            new Vector3( d, a, -c), // 3
-            new Vector3( c, a, -d), // 4
-            new Vector3( b, a, b),  // 5
-            new Vector3(-b, a, -b), // 6
-            new Vector3( c, -a, d), // 7
-            new Vector3( d, -a, c), // 8
-            new Vector3(-c, -a, -d),// 9
-            new Vector3(-d, -a, -c), // 10
-            new Vector3(-b, -a, b), // 11
-            new Vector3( b, -a, -b) // 12
-        };
-
+        r = Parameters.r;
         // Initialize force vectors
-        F = new Vector3[]
-        {
-            new Vector3( 0,  0, -F0), // 1
-            new Vector3( F0,  0,  0), // 2
-            new Vector3( 0,  0,  F0), // 3
-            new Vector3(-F0,  0,  0), // 4
-            new Vector3( 0, -F0,  0), // 5
-            new Vector3( 0, -F0,  0), // 6
-            new Vector3(-F0,  0,  0), // 7
-            new Vector3( 0,  0, -F0), // 8
-            new Vector3( F0,  0,  0), // 9
-            new Vector3( 0,  0,  F0), // 10
-            new Vector3( 0,  F0,  0), // 11
-            new Vector3( 0,  F0,  0)  // 12
-        };
-
+        F = Parameters.F;
         if (!ideal)
         {
             AddGaussianError(0.01f, 0.0001f, 0.001f, 0.005f, 0.01f, 0.01f);
         }
-
+        InitializeThrusterEffects();
     }
 
+    // Update is called once per frame
     void Update()
     {
-        bool anyKeyActive = false;
-
-        foreach (var entry in keyToControl)
-        {
-            if (Input.GetKey(entry.Key))
-            {
-                anyKeyActive = true;
-                if (thruster != null && !thruster.isPlaying)
-                {
-                    thruster.volume = thrusterVolume;
-                    thruster.Play();
-                }
-                ApplyForces(entry.Value);
-            }
-        }
-
-        if (!anyKeyActive && thruster != null && thruster.isPlaying)
-        {
-            StartCoroutine(FadeOutThrusterSound());
-        }
         if (Input.GetKeyDown(KeyCode.Space))
         {
             ResetObject();
         }
-    }
-
-    IEnumerator FadeOutThrusterSound()
-    {
-
-        while (thruster.volume > 0)
+        // Iterate through each vent to update motor angle and velocity
+        for (int i = 1; i <= 12; i++)
         {
-            thruster.volume -= thrusterVolume * Time.deltaTime / 2.0f; // 1.0f is the fade out duration
-            yield return null;
-        }
+            // Update the motor angle based on its velocity
+            motorAngle[i] += motorVelocity[i] * Time.deltaTime;
 
-        thruster.Stop();
+            // If the motor angle reaches or exceeds 1 (fully open)
+            if (motorAngle[i] >= 1f)
+            {
+                motorAngle[i] = 1f; // Clamp the angle to 1
+                motorVelocity[i] = 0f; // Stop the motor by setting velocity to 0
+            }
+            // If the motor angle reaches or goes below 0 (fully closed)
+            else if (motorAngle[i] <= 0f)
+            {
+                motorAngle[i] = 0f; // Clamp the angle to 0
+                motorVelocity[i] = 0f; // Stop the motor by setting velocity to 0
+            }
+        }
+        // Iterate through each vent to apply force
+        for (int i = 1; i <= 12; i++)
+        {
+            // Apply force only if the vent is open (motor angle > 0.001)
+            if (motorAngle[i] > 0.001f)
+            {
+                ApplyForce(i);
+            }
+        }
+        UpdateThrusterEffects();
+        UpdateThrusterSound();
+        Debug.Log(string.Join(", ", motorAngle));
     }
 
     void ResetObject()
     {
+        // close all vents
+        openVents = new int[13];
+        // set initial angle to 0
+        motorAngle = new float[13];
+        // set all motor velocity to 0
+        motorVelocity = new float[13];
+
         // Reset position to origin
         rb.position = Vector3.zero;
 
@@ -147,51 +113,102 @@ public class Astrobee : MonoBehaviour
 
         // Reset rotation to identity (no rotation)
         rb.rotation = Quaternion.identity;
-        thruster.Stop();
+        //stop the engine sound 
+        thrusterSound.Stop();
     }
-    void ApplyForces(int[] vents)
+
+    public void OpenVent(int vent)
     {
-        foreach (int ventIndex in vents)
+        openVents[vent]++;
+        if (openVents[vent] != 1) return;
+        motorVelocity[vent] = Parameters.motorVelocity[vent];
+    }
+
+    public void CloseVent(int vent)
+    {
+        openVents[vent]--;
+        if (openVents[vent] != 0) return;
+        motorVelocity[vent] = -Parameters.motorVelocity[vent];
+    }
+
+
+    void ApplyForce(int vent)
+    {
+        float forceScale = Parameters.AngleToForce(motorAngle[vent]);
+        Vector3 worldForce = transform.TransformDirection(F[vent]) * forceScale;  // Scale and convert force from local to world
+        Vector3 worldPosition = transform.TransformPoint(r[vent]);   // Convert position from local to world
+        rb.AddForceAtPosition(worldForce, worldPosition, ForceMode.Force);
+    }
+
+    void InitializeThrusterEffects()
+    {
+        thrusterEffect = new GameObject[13];
+        for (int i = 1; i <= 12; i++)
         {
-            int i = ventIndex - 1; // Convert from 1-based to 0-based indexing
-            Vector3 worldForce = transform.TransformDirection(F[i]);  // Convert force from local to world
-            Vector3 worldPosition = transform.TransformPoint(r[i]);   // Convert position from local to world
-            rb.AddForceAtPosition(worldForce, worldPosition, ForceMode.Force);
-            ActivateThrusterEffect(worldForce, worldPosition);
+            // Instantiate the thruster effect prefab for each vent
+            thrusterEffect[i] = Instantiate(thrusterEffectPrefab, transform);
+            thrusterEffect[i].name = $"ThrusterEffect_{i}";
+
+            // Set the initial position and orientation of the thruster effect
+            thrusterEffect[i].transform.localPosition = r[i];
+            thrusterEffect[i].transform.localRotation = Quaternion.LookRotation(-F[i]);
+
+            // Disable the thruster effect initially
+            thrusterEffect[i].SetActive(false);
         }
     }
 
-    void ActivateThrusterEffect(Vector3 force, Vector3 position)
+    void UpdateThrusterEffects()
     {
-        // Create thruster effect at vent position
-        GameObject thruster = Instantiate(thrusterEffectPrefab, position, Quaternion.identity);
-        thruster.transform.rotation = Quaternion.LookRotation(-force);
-
-        // Attach thruster to the object so it moves with it
-        thruster.transform.parent = transform;
-
-        // Destroy effect after 0.5 seconds
-        Destroy(thruster, 0.5f);
-    }
-
-    public void ActivateThruster(KeyCode key, float duration)
-    {
-        StartCoroutine(ActivateThrusterCoroutine(key, duration));
-    }
-
-    private IEnumerator ActivateThrusterCoroutine(KeyCode key, float duration)
-    {
-        float elapsedTime = 0f;
-        while (elapsedTime < duration)
+        for (int i = 1; i <= 12; i++)
         {
-            if (keyToControl.ContainsKey(key))
+            // Calculate the force scale
+            float forceScale = Parameters.AngleToForce(motorAngle[i]);
+
+            if (forceScale > 0.001f)
             {
-                ApplyForces(keyToControl[key]);
+                // Enable the thruster effect and scale it based on the force
+                thrusterEffect[i].SetActive(true);
+                thrusterEffect[i].transform.localScale = Vector3.one * forceScale * 0.1f;
             }
-            elapsedTime += Time.deltaTime;
-            yield return null;
+            else
+            {
+                // Disable the thruster effect if forceScale is 0
+                thrusterEffect[i].SetActive(false);
+            }
         }
     }
+
+    void UpdateThrusterSound()
+    {
+        float volumeScale = 0f;
+
+        // Calculate the volumescale by summing up the force scales of all vents
+        for (int i = 1; i <= 12; i++)
+        {
+            volumeScale += Parameters.AngleToForce(motorAngle[i]);
+            if (volumeScale > 1f)
+            {
+                volumeScale = 1f;
+                break;
+            }
+        }
+
+        // If the volumescale is greater than a small threshold, update the sound
+        if (volumeScale > 0.001f)
+        {
+            thrusterSound.volume = volumeScale; // Set volume proportional to total force scale
+            if (!thrusterSound.isPlaying)
+            {
+                thrusterSound.Play(); // Start playing the sound if not already playing
+            }
+        }
+        else
+        {
+            thrusterSound.Stop(); // Stop the sound if total force scale is zero
+        }
+    }
+
     void AddGaussianError(float comMagnitude, float inertiaMagnitude, float rotationMagnitude, float positionMagnitude, float forceMagnitude, float massMagnitude)
     {
         // Add Gaussian error to the mass
@@ -254,4 +271,5 @@ public class Astrobee : MonoBehaviour
         // Scale by the magnitude
         return randStdNormal * magnitude;
     }
+
 }

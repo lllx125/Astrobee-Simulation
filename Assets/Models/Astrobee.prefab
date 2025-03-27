@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5695502199432326508}
   - component: {fileID: 5599370522424600385}
   - component: {fileID: 6203561058277350281}
+  - component: {fileID: 3318648685132914635}
   m_Layer: 0
   m_Name: Astrobee
   m_TagString: Untagged
@@ -45,7 +46,7 @@ Rigidbody:
   serializedVersion: 4
   m_Mass: 1
   m_Drag: 0
-  m_AngularDrag: 0.05
+  m_AngularDrag: 0
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -74,15 +75,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1df76361b56931a4ca4f27fb73ecb351, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  a: 0.1
-  b: 0.05
-  c: 0.15
-  d: 0.07
-  F0: 1
   ideal: 1
   thrusterEffectPrefab: {fileID: 5091523787184162053, guid: 1eb3be60fd3e46b489fe9f5d61ce0ee0, type: 3}
-  thruster: {fileID: 6203561058277350281}
-  thrusterVolume: 0.7
+  thrusterSound: {fileID: 6203561058277350281}
 --- !u!82 &6203561058277350281
 AudioSource:
   m_ObjectHideFlags: 0
@@ -180,6 +175,18 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &3318648685132914635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6751957319098684570}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 857bc54541d12c343a8496e491ed5872, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &9201609003182660699
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -188,6 +195,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1705625470161215844}
     m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
+      propertyPath: m_LocalScale.x
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0
@@ -210,11 +229,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b8ba91637f1c2a40950f97d1532bc9d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
