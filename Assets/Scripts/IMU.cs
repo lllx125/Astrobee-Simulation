@@ -31,18 +31,23 @@ public class IMU : MonoBehaviour
 
     }
 
-    //Unity’s physics engine updates on its own fixed timestep
+    // Unity’s physics engine updates on its own fixed timestep
     void FixedUpdate()
     {
-        // Calculate linear acceleration as change in velocity over fixed time step.
-        acceleration = (rb.linearVelocity - lastVelocity) / Time.fixedDeltaTime;
+        // Get the current velocity and angular velocity from the Rigidbody
+        Vector3 currentVelocity = transform.InverseTransformDirection(rb.linearVelocity);
+        Vector3 currentAngularVelocity = transform.InverseTransformDirection(rb.angularVelocity);
 
-        // Calculate angular acceleration similarly.
-        angularAcceleration = (rb.angularVelocity - lastAngularVelocity) / Time.fixedDeltaTime;
+        // Calculate linear acceleration as change in velocity over fixed time step, rotated backward.
+        acceleration = ((currentVelocity - lastVelocity) / Time.fixedDeltaTime);
+
+        // Calculate angular acceleration similarly, rotated backward.
+        angularAcceleration = ((currentAngularVelocity - lastAngularVelocity) / Time.fixedDeltaTime);
 
         // Update for next frame
-        lastVelocity = rb.linearVelocity;
-        lastAngularVelocity = rb.angularVelocity;
+        lastVelocity = currentVelocity;
+        lastAngularVelocity = currentAngularVelocity;
+        Debug.Log($"Current Velocity: {angularAcceleration}");
     }
     /// <summary>
     /// Returns the IMU sensor readings as an array of floats.

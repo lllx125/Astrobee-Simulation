@@ -9,13 +9,13 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/Scenes/Simulation.unity
+    path: Assets/Scripts/Scenes/Simulation.unity
     guid: bd6391a684d277a4bba386284402bc9c
   - enabled: 1
-    path: Assets/Scenes/ErrorTesting.unity
+    path: Assets/Scripts/Scenes/ErrorTesting.unity
     guid: 18e3cc654f14c1841b49135ef5ec0892
   - enabled: 1
-    path: Assets/Scenes/ControlSystem.unity
+    path: Assets/Scripts/Scenes/ControlSystem.unity
     guid: cd9a610a3c796b1439a5ac2d0b5bdf2f
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

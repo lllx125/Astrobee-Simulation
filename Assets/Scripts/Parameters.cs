@@ -30,7 +30,7 @@ public static class Parameters
             new Vector3(-f, -b,-e), // 12
         };
 
-    // The forces, unit in Newtons (N)
+    // The target forces from each vent, unit in Newtons (N)
     public static float F1 = 1.5f;
     public static float F2 = 1.3f;
 
@@ -89,7 +89,7 @@ public static class Parameters
     // this section relates to motor controlling the vent
     // how fast each motor rotates, the value is 1 over the seconds it takes from fully open to 
     // fully closed
-    public static float[] motorVelocity = new float[]
+    public static float[] servoVelocity = new float[]
     {
         0f, //0
         10f,// 1
@@ -106,12 +106,53 @@ public static class Parameters
         10f,// 12
     };
 
-    // how is the force related to the angle relative to its maximum magnitude
-    public static float AngleToForce(float angle)
+    // the shape of the vents
+    // side vents are 1,2,3,4,7,8,9,10
+    // center vents are 5,6,11,12
+    public static float ventLength_side = 76.613f / 1000; // the length of the side of the vent
+    public static float ventWidth_side = 35.060f / 1000; // the width of the side of the vent
+    public static float ventLength_center = 68.90f / 1000; // the length of the center of the vent
+    public static float ventWidth_center = 35.060f / 1000; // the width of the center of the vent
+    // how the motor angle relates to the angle of the motor controlling the vent
+    public static float AngleToArea(float angle, int vent)
     {
-        // This assumes the force is related to area(which is 1-cos angle) it exposes
-        return 1 - Mathf.Cos(angle * Mathf.PI / 2);
+        // the angle is between 0 and 1, 0 is fully closed, 1 is fully opened.
+        float widthOpen = 1 - Mathf.Cos(angle * Mathf.PI / 2); // the width of the vent opening, it the percentage of the vent that is opened.
+
+        if (vent == 5 || vent == 6 || vent == 11 || vent == 12)
+        {
+            // center vents
+            return ventLength_center * ventWidth_center * widthOpen;
+        }
+        else if (vent >= 1 && vent <= 4 || vent >= 7 && vent <= 10)
+        {
+            // side vents
+            return ventLength_side * ventWidth_side * widthOpen;
+        }
+        else
+        {
+            Debug.LogError("Invalid vent number: " + vent);
+            return 0f; // Return 0 for invalid vent numbers
+        }
     }
+
+    // parameters for the propeller
+    // the diameter of the propeller, unit in meters (m)
+    public static float propellerDiameter = 130f / 1000;
+    //  coefficient of volumetric flow rate dimensionless
+    public static float C_Q = 0.05f;
+    // air density, unit in kg/m^3
+    public static float airDensity = 1.293f; // from online
+
+    // motor acceleration, unit in rpm/s 
+    public static float motorAcceleration = 10000f;
+    // target motor velocity, unit in rpm
+    public static float targetMotorVelocity = 3000f;
+
+    // the coefficient of thrust K = C_Q^2 * D^4 / rho * (unit conversion from 2pi/60 rad/s / rpm)^2
+    public static float K = C_Q * C_Q * propellerDiameter * propellerDiameter *
+        propellerDiameter * propellerDiameter * propellerDiameter * propellerDiameter / airDensity * (4 * Mathf.PI * Mathf.PI / 3600);
+
 
 
 }

@@ -24,9 +24,15 @@ public class Astrobee : MonoBehaviour
 
     // the angle of the motor controlling the vent
     // 0 is fully closed, 1 is fully opened
-    float[] motorAngle;
+    float[] servoAngle;
     // the velocity of the motor controlling the vent
-    float[] motorVelocity;
+    float[] servoVelocity;
+    // the rotational velocity of the motor controlling the vent, units in rpm
+    float motorVelocity_right;
+    float motorAcceleration_right;
+    float motorVelocity_left;
+    float motorAcceleration_left;
+    float[] forceMagnitude = new float[13];
     void Start()
     {
         // Look for the Rigidbody component in this GameObject
@@ -61,37 +67,10 @@ public class Astrobee : MonoBehaviour
         {
             ResetObject();
         }
-        // Iterate through each vent to update motor angle and velocity
-        for (int i = 1; i <= 12; i++)
-        {
-            // Update the motor angle based on its velocity
-            motorAngle[i] += motorVelocity[i] * Time.deltaTime;
-
-            // If the motor angle reaches or exceeds 1 (fully open)
-            if (motorAngle[i] >= 1f)
-            {
-                motorAngle[i] = 1f; // Clamp the angle to 1
-                motorVelocity[i] = 0f; // Stop the motor by setting velocity to 0
-            }
-            // If the motor angle reaches or goes below 0 (fully closed)
-            else if (motorAngle[i] <= 0f)
-            {
-                motorAngle[i] = 0f; // Clamp the angle to 0
-                motorVelocity[i] = 0f; // Stop the motor by setting velocity to 0
-            }
-        }
-        // Iterate through each vent to apply force
-        for (int i = 1; i <= 12; i++)
-        {
-            // Apply force only if the vent is open (motor angle > 0.001)
-            if (motorAngle[i] > 0.001f)
-            {
-                ApplyForce(i);
-            }
-        }
+        UpdateMotor();
         UpdateThrusterEffects();
         UpdateThrusterSound();
-
+        ApplyForce();
     }
 
     void ResetObject()
@@ -99,9 +78,16 @@ public class Astrobee : MonoBehaviour
         // close all vents
         openVents = new int[13];
         // set initial angle to 0
-        motorAngle = new float[13];
-        // set all motor velocity to 0
-        motorVelocity = new float[13];
+        servoAngle = new float[13];
+        // set all servo velocity to 0
+        servoVelocity = new float[13];
+        // set all motors to 0
+        motorVelocity_right = 0f;
+        motorVelocity_left = 0f;
+        motorAcceleration_right = 0f;
+        motorAcceleration_left = 0f;
+
+
 
         // Reset position to origin
         rb.position = Vector3.zero;
@@ -120,23 +106,127 @@ public class Astrobee : MonoBehaviour
     {
         openVents[vent]++;
         if (openVents[vent] != 1) return;
-        motorVelocity[vent] = Parameters.motorVelocity[vent];
+        servoVelocity[vent] = Parameters.servoVelocity[vent];
     }
 
     public void CloseVent(int vent)
     {
         openVents[vent]--;
         if (openVents[vent] != 0) return;
-        motorVelocity[vent] = -Parameters.motorVelocity[vent];
+        servoVelocity[vent] = -Parameters.servoVelocity[vent];
     }
 
-
-    void ApplyForce(int vent)
+    /// Updates the motor and servo angles for each vent.
+    /// Ensures servo angles remain within the range [0, 1] and adjusts velocities accordingly.
+    /// Updates the left and right motor velocities based on their accelerations.
+    void UpdateMotor()
     {
-        float forceScale = Parameters.AngleToForce(motorAngle[vent]);
-        Vector3 worldForce = transform.TransformDirection(F[vent]) * forceScale;  // Scale and convert force from local to world
-        Vector3 worldPosition = transform.TransformPoint(r[vent]);   // Convert position from local to world
-        rb.AddForceAtPosition(worldForce, worldPosition, ForceMode.Force);
+        // Update servo angles and velocities for each vent
+        for (int vent = 1; vent <= 12; vent++)
+        {
+            servoAngle[vent] += servoVelocity[vent] * Time.deltaTime;
+
+            // Clamp servo angles to the range [0, 1] and stop velocity if limits are reached
+            if (servoAngle[vent] > 1)
+            {
+                servoAngle[vent] = 1;
+                servoVelocity[vent] = 0;
+            }
+            if (servoAngle[vent] < 0)
+            {
+                servoAngle[vent] = 0;
+                servoVelocity[vent] = 0;
+            }
+        }
+
+        // Update left motor velocity
+        motorVelocity_left += motorAcceleration_left * Time.deltaTime;
+        if (motorVelocity_left > Parameters.targetMotorVelocity)
+        {
+            motorVelocity_left = Parameters.targetMotorVelocity;
+            motorAcceleration_left = 0;
+        }
+        if (motorVelocity_left < 0)
+        {
+            motorVelocity_left = 0;
+            motorAcceleration_left = 0;
+        }
+
+        // Update right motor velocity
+        motorVelocity_right += motorAcceleration_right * Time.deltaTime;
+        if (motorVelocity_right > Parameters.targetMotorVelocity)
+        {
+            motorVelocity_right = Parameters.targetMotorVelocity;
+            motorAcceleration_right = 0;
+        }
+        if (motorVelocity_right < 0)
+        {
+            motorVelocity_right = 0;
+            motorAcceleration_right = 0;
+        }
+    }
+
+    void ApplyForce()
+    {
+        // compute the total area of left and right side.
+        float A_left = 0f;
+        float A_right = 0f;
+        for (int vent = 1; vent <= 6; vent++)
+        {
+            A_left += Parameters.AngleToArea(servoAngle[vent], vent);
+        }
+        for (int vent = 7; vent <= 12; vent++)
+        {
+            A_right += Parameters.AngleToArea(servoAngle[vent], vent);
+        }
+        // turn on the motor if the area is not 0, else turn off the motor
+        if (A_left > 0.001f && motorVelocity_left < Parameters.targetMotorVelocity)
+        {
+            motorAcceleration_left = Parameters.motorAcceleration;
+        }
+        else if (A_left < 0.001f && motorVelocity_left > 0.001f)
+        {
+            motorAcceleration_left = -Parameters.motorAcceleration;
+        }
+        if (A_right > 0.001f && motorVelocity_right < Parameters.targetMotorVelocity)
+        {
+            motorAcceleration_right = Parameters.motorAcceleration;
+        }
+        else if (A_right < 0.001f && motorVelocity_right > 0.001f)
+        {
+            motorAcceleration_right = -Parameters.motorAcceleration;
+        }
+        for (int vent = 1; vent <= 6; vent++)
+        {
+            if (A_left > 0.001f)
+            {
+                forceMagnitude[vent] = Parameters.K * motorVelocity_left * motorVelocity_left * Parameters.AngleToArea(servoAngle[vent], vent) / (A_left * A_left);
+            }
+            else
+            {
+                forceMagnitude[vent] = 0f; // No force if area is zero
+            }
+        }
+        for (int vent = 7; vent <= 12; vent++)
+        {
+            if (A_right > 0.001f)
+            {
+                forceMagnitude[vent] = Parameters.K * motorVelocity_right * motorVelocity_right * Parameters.AngleToArea(servoAngle[vent], vent) / (A_right * A_right);
+            }
+            else
+            {
+                forceMagnitude[vent] = 0f; // No force if area is zero
+            }
+        }
+
+        // Apply forces
+        for (int vent = 1; vent <= 12; vent++)
+        {
+            Vector3 worldForce = transform.TransformDirection(F[vent]) * forceMagnitude[vent];  // Scale and convert force from local to world
+            Vector3 worldPosition = transform.TransformPoint(r[vent]);   // Convert position from local to world
+            rb.AddForceAtPosition(worldForce, worldPosition, ForceMode.Force);
+        }
+
     }
 
     void InitializeThrusterEffects()
@@ -162,13 +252,13 @@ public class Astrobee : MonoBehaviour
         for (int i = 1; i <= 12; i++)
         {
             // Calculate the force scale
-            float forceScale = Parameters.AngleToForce(motorAngle[i]);
+            float forceScale = forceMagnitude[i];
 
             if (forceScale > 0.001f)
             {
                 // Enable the thruster effect and scale it based on the force
                 thrusterEffect[i].SetActive(true);
-                thrusterEffect[i].transform.localScale = Vector3.one * forceScale * 0.1f;
+                thrusterEffect[i].transform.localScale = Vector3.one * forceScale * 1f;
             }
             else
             {
@@ -185,7 +275,7 @@ public class Astrobee : MonoBehaviour
         // Calculate the volumescale by summing up the force scales of all vents
         for (int i = 1; i <= 12; i++)
         {
-            volumeScale += Parameters.AngleToForce(motorAngle[i]);
+            volumeScale += forceMagnitude[i];
             if (volumeScale > 1f)
             {
                 volumeScale = 1f;
@@ -196,7 +286,7 @@ public class Astrobee : MonoBehaviour
         // If the volumescale is greater than a small threshold, update the sound
         if (volumeScale > 0.001f)
         {
-            thrusterSound.volume = volumeScale; // Set volume proportional to total force scale
+            thrusterSound.volume = volumeScale * 5; // Set volume proportional to total force scale
             if (!thrusterSound.isPlaying)
             {
                 thrusterSound.Play(); // Start playing the sound if not already playing
